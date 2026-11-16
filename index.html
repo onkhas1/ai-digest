@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дайджест платежей с ИИ — кейс</title>
+<meta name="description" content="Как устроен еженедельный дайджест о платежах и AML: агент в Claude Code собирает и сверяет новости, я проверяю и правлю.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fafaf9; --ink:#0b0b0c; --muted:#55585f; --line:#dfe4ee; --line-strong:#c9d1e0;
+  --accent:#2340ff; --on-accent:#fff; --card:#ffffff;
+  --gutter:clamp(16px,4vw,64px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0e0f11; --ink:#f2f2f0; --muted:#a3a6ad; --line:#24262b; --line-strong:#2f323a;
+    --accent:#6f82ff; --on-accent:#0b0b0c; --card:#15171a;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e0f11; --ink:#f2f2f0; --muted:#a3a6ad; --line:#24262b; --line-strong:#2f323a;
+  --accent:#6f82ff; --on-accent:#0b0b0c; --card:#15171a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.55 Onest,-apple-system,"Segoe UI",sans-serif;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:40px 40px;background-position:-1px -1px}
+a{color:var(--accent);text-underline-offset:3px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
+header{padding:clamp(48px,9vw,120px) 0 clamp(32px,5vw,64px)}
+.kicker{font:500 15px/1.4 Onest,sans-serif;color:var(--muted);margin:0 0 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.tag{background:var(--accent);color:var(--on-accent);padding:3px 10px;font-weight:500}
+h1{font-weight:700;font-size:clamp(38px,6vw,76px);line-height:1;letter-spacing:-.035em;margin:0;max-width:14ch}
+.lede{font-size:clamp(19px,1.8vw,24px);line-height:1.45;letter-spacing:-.01em;max-width:42ch;margin:28px 0 0}
+section{padding:clamp(40px,6vw,80px) 0;border-top:1px solid var(--line-strong)}
+h2.sec{font-size:clamp(26px,2.6vw,36px);line-height:1.1;letter-spacing:-.025em;margin:0 0 32px;font-weight:700}
+.steps{display:grid;grid-template-columns:1fr;gap:0;border:1px solid var(--line-strong);background:var(--card)}
+.step{padding:24px;border-right:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong);margin:0 -1px -1px 0}
+.step b{display:block;font-size:44px;line-height:1;color:var(--accent);margin-bottom:16px;letter-spacing:-.04em}
+.step h3{margin:0 0 8px;font-size:19px;letter-spacing:-.01em}
+.step p{margin:0;color:var(--muted);font-size:16px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line-strong);background:var(--card)}
+.pair>div{padding:clamp(20px,3vw,36px)}
+.pair>div+div{border-left:1px solid var(--line-strong)}
+.pair h3{font:500 15px/1.4 Onest,sans-serif;color:var(--muted);margin:0 0 16px;text-transform:uppercase;letter-spacing:.06em}
+.pair ul{margin:0;padding-left:18px}.pair li{margin:6px 0}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line-strong);background:var(--card)}
+.roles>div{padding:clamp(20px,3vw,36px)}.roles>div+div{border-left:1px solid var(--line-strong)}
+.roles h3{margin:0 0 12px;font-size:21px}.roles ul{margin:0;padding-left:18px}.roles li{margin:6px 0}
+.digest{background:var(--card);border:1px solid var(--line-strong);padding:clamp(20px,4vw,56px);max-width:820px}
+.digest h2{font-size:clamp(24px,2.4vw,32px);letter-spacing:-.025em;margin:40px 0 16px;line-height:1.1}
+.digest h2:first-child{margin-top:0}
+.digest h3{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:36px 0 8px}
+.digest h4{margin:28px 0 8px;font-size:18px}
+.digest p{margin:10px 0}
+.digest .why{color:var(--ink);border-left:3px solid var(--accent);padding-left:14px}
+.digest .src{font-size:15px;color:var(--muted)}
+.digest hr{border:0;border-top:1px dashed var(--line-strong);margin:32px 0}
+.digest-title{font-size:clamp(26px,2.6vw,36px);margin:0 0 8px;letter-spacing:-.025em;line-height:1.1}
+.digest-note{color:var(--muted);margin:0 0 32px;font-size:15px}
+footer{padding:48px 0 64px;color:var(--muted);font-size:15px;border-top:1px solid var(--line-strong)}
+@media (min-width:640px){.steps{grid-template-columns:repeat(2,1fr)}.step:last-child{grid-column:1/-1}}
+@media (min-width:1080px){.steps{grid-template-columns:repeat(5,1fr)}.step:last-child{grid-column:auto}}
+@media (max-width:720px){
+  .pair,.roles{grid-template-columns:1fr}
+  .pair>div+div,.roles>div+div{border-left:0;border-top:1px solid var(--line-strong)}
+  body{background-size:24px 24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="kicker"><span class="tag">Кейс</span> Александр Сахно · ИИ-агент и контент из источников</p>
+  <h1>Дайджест платежей за неделю</h1>
+  <p class="lede">Каждое воскресенье агент в Claude Code сам собирает новости о платежах, AML и стейблкоинах, сверяет их с источниками и пишет выпуск. Я читаю, проверяю спорные факты и правлю текст.</p>
+</header>
+
+<section>
+  <h2 class="sec">Как устроено</h2>
+  <div class="steps">
+    <div class="step"><b>1</b><h3>Расписание</h3><p>Задача запускается сама по воскресеньям в 17:00. В ней записаны темы по приоритету, регионы, список источников и формат выпуска.</p></div>
+    <div class="step"><b>2</b><h3>Поиск</h3><p>Агент делает серию поисковых запросов и читает отраслевые сайты: Finextra, iGaming Business, PYMNTS, Payments Dive и местную прессу.</p></div>
+    <div class="step"><b>3</b><h3>Сверка</h3><p>У каждой новости есть ссылка. Факт без подтверждения в выпуск не попадает. Если источник отраслевой, а первичный документ не найден, это написано прямо в тексте.</p></div>
+    <div class="step"><b>4</b><h3>Текст</h3><p>На новость две части: что случилось и почему это важно. Правила тона и список запрещённых штампов зашиты в задачу.</p></div>
+    <div class="step"><b>5</b><h3>Проверка</h3><p>Я читаю выпуск, открываю ссылки там, где сомневаюсь, и правлю формулировки. Публиковать и отправлять что-либо агенту запрещено.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2 class="sec">Исходник → публикация</h2>
+  <div class="pair">
+    <div>
+      <h3>Что в источниках</h3>
+      <ul>
+        <li>Federal Register, 10 ноября: приказ FinCEN по разделу 9714 против биржи MEXC.</li>
+        <li>Оценка FinCEN: не меньше $16,7 млрд за 2021–2026, связанных с обходом санкций и киберпреступностью.</li>
+        <li>Запрет для американских финорганизаций действует с 10 декабря.</li>
+        <li>Crypto Times: Binance остановила переводы с MEXC в день публикации.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Что вышло в дайджесте</h3>
+      <p><strong>FinCEN против MEXC.</strong> Минфин США назвал сейшельскую биржу MEXC учреждением «первичной озабоченности в отмывании денег». С 10 декабря американским финорганизациям запрещено переводить средства для MEXC. Binance остановила операции с MEXC сразу.</p>
+      <p><em>Почему важно:</em> это почти «отлучение» от доллара. Биржи и PSP с американскими связями начнут рвать отношения с MEXC заранее.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 class="sec">Кто что делает</h2>
+  <div class="roles">
+    <div><h3>Агент</h3><ul>
+      <li>ищет новости за 7 дней по темам из задачи</li>
+      <li>отбрасывает неподтверждённое и ставит ссылки</li>
+      <li>пишет черновик по шаблону выпуска</li>
+      <li>сам проверяет текст на штампы</li>
+    </ul></div>
+    <div><h3>Я</h3><ul>
+      <li>задал темы, источники, формат и тон</li>
+      <li>проверяю цифры и даты по ссылкам</li>
+      <li>правлю формулировки и убираю лишнее</li>
+      <li>решаю, что из выпуска пойдёт дальше</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2 class="sec">Выпуск целиком</h2>
+  <div class="digest">
+    <p class="digest-title"><strong>Дайджест платежей · 9–15 ноября 2026</strong></p>
+    <p class="digest-note">Выпуск без правок по содержанию. Убран только личный раздел со ссылками на мои учебные материалы.</p>
+<h3>Главное за неделю</h3>
+<ol>
+<li><strong>FinCEN отрезает биржу MEXC от американской финсистемы.</strong> Приказ вышел в Federal Register 10 ноября, вступает 10 декабря. Binance перестала работать с MEXC в тот же день, не дожидаясь срока.</li>
+<li><strong>Таиланд продолжает давить дропов.</strong> Накрыли гемблинг-сеть Roll88 с оборотом 400+ млн бат в год через корпоративные и дроп-счета, а SEC предложил лимит на переводы стейблкоинов с обязательной проверкой на дропов.</li>
+<li><strong>В Госдуму внесли закон против дропперов.</strong> Банк с подтверждением ЦБ сможет урезать подозрительному клиенту входящие переводы и внесение наличных до 30 тыс. ₽ в месяц.</li>
+</ol>
+<h3>По регионам</h3>
+<h4>Азия</h4>
+<p><strong>Таиланд: облава на Roll88 и офис по найму дропов в Мэсоте.</strong> 15 ноября киберполиция задержала семерых по делу онлайн-казино Roll88: депозиты и выводы шли через счета компаний, оформленных на номинальных директоров, и через дроп-счета. У сети было больше 20 тыс. игроков. Неделей раньше в Мэсоте взяли троих: они вербовали людей открывать счета за 8–10 тыс. бат и держали 40 телефонов с банковскими приложениями.</p>
+<p class="why"><em>Почему важно:</em> схема «юрлица на подставных директоров + дропы» — типовой кейс для антифрода. Таиланд теперь бьёт и по корпоративным счетам, а не только по физлицам.</p>
+<p class="src"><a href="https://www.khaosodenglish.com/news/2026/11/15/thai-cyber-police-bust-roll88-gambling-network-with-over-400-million-baht-in-annual-transactions/" target="_blank" rel="noopener">Khaosod: Roll88</a> · <a href="https://www.khaosodenglish.com/news/2026/11/08/cyber-police-arrest-three-suspects-in-mule-account-scam-network-in-mae-sot/" target="_blank" rel="noopener">Khaosod: Мэсот</a></p>
+<p><strong>Таиланд: SEC хочет лимит 5 млн бат в день на переводы стейблкоинов.</strong> Пока это проект. Операторов обяжут соблюдать Travel Rule и проверять клиентов, чтобы те не оказались дропами или связанными с незаконными операциями.</p>
+<p class="why"><em>Почему важно:</em> регулятор признаёт, что дроп-схемы переезжают из банков в крипту, и переносит на биржи ту же логику проверок, что у банков.</p>
+<p class="src"><a href="https://www.blockhead.co/2026/11/16/thailands-sec-proposes-5-million-baht-daily-cap-on-stablecoin-transfers/" target="_blank" rel="noopener">Blockhead</a></p>
+<p><strong>Южная Корея: экстренные требования к безопасности криптобирж.</strong> 12 ноября FSC обязал биржи круглосуточно мониторить системы, держать максимум клиентской крипты на холодных кошельках и готовиться к банковским IT-стандартам по будущему Digital Asset Act. Биржам разрешили замораживать ввод и вывод при подозрении на взлом без риска санкций.</p>
+<p class="why"><em>Почему важно:</em> корейские биржи подтягивают к уровню банков. Для тех, кто работает с корейскими контрагентами, это значит больше проверок и возможные паузы в выводах.</p>
+<p class="src"><a href="https://cryptobriefing.com/south-korea-fsc-crypto-exchange-security-rules" target="_blank" rel="noopener">Crypto Briefing</a></p>
+<p><strong>Камбоджа: глава ЦБ признала, что с криптой опоздали.</strong> Губернатор Национального банка сказала, что регулировать крипту надо было раньше: через неё скам-индустрия перегоняет деньги за границу. Параллельно TRM Labs насчитала больше $1 млрд крипты, пришедшей в этом году на кошельки, связанные с лицензированными казино Сиануквиля, хотя местный регулятор это запрещает.</p>
+<p class="why"><em>Почему важно:</em> Камбоджа — один из главных хабов скам-центров, и ужесточение там ударит по всем, кто принимает оттуда крипту.</p>
+<p class="src"><a href="https://www.thestar.com.my/aseanplus/aseanplus-news/2026/11/14/cambodia-should-have-acted-sooner-on-crypto-bank-chief" target="_blank" rel="noopener">The Star</a> · <a href="https://asia.nikkei.com/spotlight/cryptocurrencies/cambodian-casino-linked-wallets-receive-1.1bn-in-crypto-despite-ban" target="_blank" rel="noopener">Nikkei Asia</a></p>
+<p><strong>Индия: Paytm получил предварительное «да» RBI на кошелёк.</strong> 13 ноября платёжная «дочка» Paytm получила принципиальное разрешение выпускать предоплаченные инструменты, включая кошельки. Финальную лицензию дадут после аудита, на него полгода.</p>
+<p class="why"><em>Почему важно:</em> после разгрома Paytm Payments Bank в 2024-м это возвращение крупного игрока, хотя кошельки в Индии уже сильно проиграли UPI.</p>
+<p class="src"><a href="https://www.business-standard.com/companies/news/paytm-wallet-likely-to-see-revival-following-rbi-s-in-principle-nod-126111301606_1.html" target="_blank" rel="noopener">Business Standard</a></p>
+<h4>Африка</h4>
+<p><strong>Нигерия: ЦБ ввёл капитал для эмитентов стейблкоинов.</strong> Новые правила CBN: эмитенту стейблкоина на найре нужен капитал ₦10 млрд, на иностранной валюте — ₦15 млрд. Провайдеры виртуальных активов должны выявлять клиентов, которые занимаются P2P-торговлей как бизнесом, и сообщать о них в банк. Циркуляр датирован 5 ноября, в прессе разошёлся 9-го.</p>
+<p class="why"><em>Почему важно:</em> Нигерия — один из крупнейших P2P-рынков USDT в мире, и теперь P2P-трейдеры попадают в поле зрения банков.</p>
+<p class="src"><a href="https://www.vanguardngr.com/2026/11/cbn-sets-n10bn-n15bn-capital-requirements-for-stablecoin-issuers/" target="_blank" rel="noopener">Vanguard</a> · <a href="https://www.naijanews.com/2026/11/09/cbn-introduces-new-rules-for-stablecoin-operators/" target="_blank" rel="noopener">Naija News</a></p>
+<h4>Латинская Америка</h4>
+<p><strong>Бразилия: запрет ставок держится, суд и парламент буксуют.</strong> Временная мера 1.394/2026, которая отменила регулируемый рынок ставок, продолжает действовать. Судья Верховного суда Луис Фукс 8 ноября заморозил все иски против запрета в нижестоящих судах. С 13 ноября повестку Палаты депутатов блокирует законопроект PL 5.477/2026 об уголовной ответственности за ставки: срочный срок истёк, докладчика нет.</p>
+<p class="why"><em>Почему важно:</em> легальные операторы и их платёжные партнёры по PIX остаются в подвешенном состоянии, а давление смещается на платёжную инфраструктуру.</p>
+<p class="src"><a href="https://next.io/news/regulation/brazil-supreme-court-judge-open-new-arguments/" target="_blank" rel="noopener">Next.io</a> · <a href="https://www.well-played.com.au/brazil-betting-bill-chamber-agenda-lock-no-rapporteur/" target="_blank" rel="noopener">Well Played</a></p>
+<h4>Мир</h4>
+<p><strong>FinCEN против MEXC.</strong> Минфин США назвал сейшельскую биржу MEXC учреждением «первичной озабоченности в отмывании денег» (по разделу 9714). По версии властей, с 2021 по 2026 год через неё прошло не меньше $16,7 млрд, связанных с обходом санкций (в том числе российских) и киберпреступностью. Приказ опубликован 10 ноября, с 10 декабря американским финорганизациям запрещено переводить средства для MEXC. Binance остановила операции с MEXC сразу.</p>
+<p class="why"><em>Почему важно:</em> это почти «отлучение» от доллара. Остальные биржи и PSP с американскими связями начнут рвать отношения с MEXC заранее.</p>
+<p class="src"><a href="https://www.crowdfundinsider.com/2026/11/322770-fincen-order-severs-mexc-global-from-u-s-financial-system-over-sanctions-linked-activity/" target="_blank" rel="noopener">Crowdfund Insider</a> · <a href="https://www.cryptotimes.io/2026/11/10/binance-blocks-mexc-transfers-after-fincen-flags-money-laundering-concerns/" target="_blank" rel="noopener">Crypto Times</a></p>
+<p><strong>FinCEN и ФРС отозвали снижение порога для международных переводов.</strong> Предлагалось снизить порог, с которого банки обязаны собирать и передавать данные о переводе, с $3000 до $250. Проект отозвали.</p>
+<p class="why"><em>Почему важно:</em> денежные переводчики и банки избежали резкого роста объёма KYC-данных по мелким трансграничным платежам.</p>
+<p class="src"><a href="https://kyc360.com/knowledge-hub/resources/aml-roundup-13th-november-2026-fincen-and-federal-reserve-withdraw-cross-border-transfer-proposal" target="_blank" rel="noopener">KYC360</a></p>
+<p><strong>ЕС: надзор за USDC частично перешёл к EBA.</strong> В октябре Европейский банковский орган признал USDC первым «значимым» e-money токеном по MiCA, и с 12 ноября EBA, по сообщениям, взял на себя надзор за резервами и ключевыми защитными механизмами эмитента (Circle France). Источник отраслевой, первичный документ EBA я не проверил.</p>
+<p class="why"><em>Почему важно:</em> USDC становится стейблкоином с самым жёстким надзором в Европе, а USDT в ЕС по-прежнему вне MiCA.</p>
+<p class="src"><a href="https://blog.upay.com/eu-usdc-supervision/" target="_blank" rel="noopener">UPay Blog</a></p>
+<p><strong>FATF: отчёт про деньги скам-центров.</strong> По итогам октябрьского пленума FATF выпустила отчёт о том, как устроены финансы скам-комплексов в Юго-Восточной Азии, и призвала страны действовать сообща. Отчёт вышел 5–6 ноября, разбор разошёлся 10-го.</p>
+<p class="why"><em>Почему важно:</em> это прямой сигнал банкам и PSP региона искать дропов и подставные юрлица. Таиланд и Камбоджа из этого дайджеста как раз про это.</p>
+<p class="src"><a href="https://www.drishtiias.com/daily-updates/daily-news-analysis/fatf-steps-up-action-against-evolving-financial-crime-threats" target="_blank" rel="noopener">Drishti IAS</a> · <a href="https://www.mlex.com/mlex/articles/2546912" target="_blank" rel="noopener">MLex</a></p>
+<h4>Россия</h4>
+<p><strong>Законопроект против дропперов внесён в Госдуму.</strong> Если банк заметит подозрительные операции и ЦБ это подтвердит, клиенту можно будет ограничить внесение наличных и переводы от других людей до 30 тыс. ₽ в месяц, на срок до года (при повторе — до двух лет). Основа — платформа ЦБ «Антидроп». Вступление в силу, по словам Журавлёва, — не раньше 2028 года.</p>
+<p class="why"><em>Почему важно:</em> в России появится режим «дроп-статуса» с лимитами, по той же логике, что межбанковская заморозка дропов в Таиланде.</p>
+<p class="src"><a href="https://www.comnews.ru/content/248364/2026-11-13/2026-w46/1009/gosdumu-vnesli-zakonoproekt-o-protivodeystvii-deyatelnosti-dropperov" target="_blank" rel="noopener">ComNews</a></p>
+<h3>Термин недели</h3>
+<p><strong>Primary money laundering concern</strong> («учреждение первичной озабоченности в отмывании»). Это статус, который Минфин США присваивает иностранной компании или банку. После этого американские банки обязаны прекратить с ним расчёты, и он фактически теряет доступ к доллару. Раньше это делали по разделу 311 Patriot Act, сейчас для российских рисков есть раздел 9714. Под ним и оказалась MEXC.</p>
+<h3>Вопрос на проверку</h3>
+<p>Приказ против MEXC вступает в силу только 10 декабря. Почему Binance отключила MEXC уже 10 ноября, хотя напрямую приказ касается американских организаций?</p>
+<hr>
+<h4>Ответ</h4>
+<p>Binance работает с долларом и американскими контрагентами, и после истории с $4,3 млрд штрафа в 2023 году ей нельзя выглядеть «прокладкой», через которую MEXC продолжит доставать доллары. Поэтому крупные игроки отключают такого контрагента сразу после публикации, не дожидаясь срока: так они сами снижают свой риск. Это и есть de-risking.</p>
+  </div>
+</section>
+
+<footer>Александр Сахно · Telegram <a href="https://t.me/onkhas">@onkhas</a> · <a href="https://onkhas1.github.io/portfolio/">портфолио</a></footer>
+</div>
+</body>
+</html>
